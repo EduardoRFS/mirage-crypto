@@ -1,0 +1,55 @@
+name: Crypto
+
+on: [push, pull_request]
+
+jobs:
+  cross_compile:
+    name: Build for Android
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ocaml-version: ["~4.10.1000"]
+        operating-system: [ubuntu-latest]
+
+    runs-on: ${{ matrix.operating-system }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create esy wrapper
+        run: |
+          echo '{
+            "name": "cross-compile",
+            "dependencies": {
+              "ocaml": "${{ matrix.ocaml-version }}",
+              "mirage-crypto": "./mirage-crypto.opam",
+              "mirage-crypto-rng": "./mirage-crypto-rng.opam",
+              "mirage-crypto-rng-mirage": "./mirage-crypto-rng-mirage.opam",
+              "generate": "github:EduardoRFS/reason-mobile:generate.json#b97bff4c8e35cd51e8b583e9cd8500e0ab1480d0"
+            },
+            "resolutions": {
+              "@opam/mtime": "github:dune-universe/mtime:mtime.opam#9584b66cecc891208b31cec4628dd412b8cffe75"
+            }
+          }' > esy.json
+
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - name: Install esy
+        run: npm install -g esy
+      - name: Create cross compile toolchain lock
+        run: esy solve
+      - uses: esy/github-action@v1
+        with:
+          cache-key: bump-1-${{ hashFiles('esy.lock/index.json') }}
+
+      - name: Create Android ARM64 wrapper
+        run: esy generate android.arm64
+
+      - name: Install Android ARM64 dependencies
+        run: esy @android.arm64 install
+
+      - name: Build Android ARM64
+        run: esy @android.arm64 build

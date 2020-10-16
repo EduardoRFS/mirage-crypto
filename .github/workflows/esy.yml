@@ -4,15 +4,15 @@ on: [push, pull_request]
 
 jobs:
   cross_compile:
-    name: Build for Android
+    name: Cross compile
 
     strategy:
       fail-fast: false
       matrix:
+        target: [android.arm64, linux.musl.arm64]
         ocaml-version: ["~4.10.1000"]
-        operating-system: [ubuntu-latest]
 
-    runs-on: ${{ matrix.operating-system }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -27,7 +27,7 @@ jobs:
               "mirage-crypto": "./mirage-crypto.opam",
               "mirage-crypto-rng": "./mirage-crypto-rng.opam",
               "mirage-crypto-rng-mirage": "./mirage-crypto-rng-mirage.opam",
-              "generate": "github:EduardoRFS/reason-mobile:generate.json#b97bff4c8e35cd51e8b583e9cd8500e0ab1480d0"
+              "generate": "github:EduardoRFS/reason-mobile:generate.json#9e60c59f395626e24ab8bc918ef013e86a279a06"
             },
             "resolutions": {
               "@opam/mtime": "github:dune-universe/mtime:mtime.opam#9584b66cecc891208b31cec4628dd412b8cffe75"
@@ -43,13 +43,13 @@ jobs:
         run: esy solve
       - uses: esy/github-action@v1
         with:
-          cache-key: bump-1-${{ hashFiles('esy.lock/index.json') }}
+          cache-key: ${{ matrix.target }}-${{ hashFiles('esy.lock/index.json') }}
 
-      - name: Create Android ARM64 wrapper
-        run: esy generate android.arm64
+      - name: Create ${{ matrix.target }} wrapper
+        run: esy generate ${{ matrix.target }}
 
-      - name: Install Android ARM64 dependencies
-        run: esy @android.arm64 install
+      - name: Install ${{ matrix.target }} dependencies
+        run: esy @${{ matrix.target }} install
 
-      - name: Build Android ARM64
-        run: esy @android.arm64 build
+      - name: Build ${{ matrix.target }}
+        run: esy @${{ matrix.target }} build
